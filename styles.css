@@ -1,0 +1,19 @@
+.ai-reflect-view {
+  padding: 12px;
+}
+.ai-reflect-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+.ai-reflect-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70%;
+}
+.ai-reflect-actions {
+  margin-top: 12px;
+}

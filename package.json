@@ -1,0 +1,34 @@
+{
+  "name": "ai-reflect-obsidian-plugin",
+  "version": "0.1.0",
+  "description": "AI-powered reflection and advice for Obsidian notes",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server/index.ts",
+    "clean": "rm -rf build && mkdir build",
+    "copy-static": "cp manifest.json build/manifest.json && cp styles.css build/styles.css",
+    "build-esbuild": "npm run clean && node esbuild.config.mjs production && npm run copy-static",
+    "build": "npm run build-esbuild",
+    "start": "node build/server/index.js",
+    "lint": "tsc --noEmit",
+    "test": "node test-api.js",
+    "dev-esbuild": "node esbuild.config.mjs"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "dotenv": "^17.2.1",
+    "fastify": "^5.5.0",
+    "node-fetch": "^2.7.0",
+    "obsidian": "^1.8.7",
+    "tslib": "^2.8.1",
+    "tsx": "^4.20.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "builtin-modules": "^5.0.0",
+    "esbuild": "^0.25.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
