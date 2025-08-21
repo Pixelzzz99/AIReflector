@@ -261,6 +261,83 @@ async function startServer() {
     }
   );
 
+  // Новый endpoint для умной системы советов
+  fastify.post<{
+    Body: {
+      message: string;
+      helpType: 'mentor' | 'coach' | 'psychologist' | 'business' | 'reflection';
+    };
+  }>(
+    "/api/advice",
+    async (request: FastifyRequest<{ Body: { message: string; helpType: string } }>, reply: FastifyReply) => {
+      console.log('💬 New advice request received');
+      console.log('- Message length:', request.body.message.length);
+      console.log('- Help type:', request.body.helpType);
+      console.log('- Message preview:', request.body.message.substring(0, 100) + '...');
+      
+      try {
+        const { message, helpType } = request.body;
+        
+        if (!message || !message.trim()) {
+          return reply.status(400).send({ error: "Сообщение не может быть пустым" });
+        }
+        
+        // Определяем язык сообщения
+        const isRussian = /[а-яё]/i.test(message);
+        const language = isRussian ? 'ru' : 'en';
+        console.log('- Detected language:', language);
+        
+        // Создаем промпт в зависимости от типа помощи и языка
+        const systemPrompts = {
+          ru: {
+            mentor: "Вы опытный наставник с многолетним опытом в профессиональном развитии. Делитесь практическими советами и помогаете развивать навыки. Отвечайте на русском языке.",
+            coach: "Вы мотивирующий тренер, который помогает достигать целей и формировать полезные привычки. Фокусируетесь на действиях и результатах. Отвечайте на русском языке.",
+            psychologist: "Вы эмпатичный психолог, который помогает понять эмоции, паттерны поведения и внутренние процессы. Создаете безопасное пространство для размышлений. Отвечайте на русском языке.",
+            business: "Вы опытный бизнес-консультант с экспертизой в стратегии, продажах и развитии бизнеса. Даете практичные коммерческие советы. Отвечайте на русском языке.",
+            reflection: "Вы мудрый помощник для саморефлексии, который помогает глубже понять себя и ситуации. Задаете правильные вопросы. Отвечайте на русском языке."
+          },
+          en: {
+            mentor: "You are an experienced mentor with years of expertise in professional development. You share practical advice and help develop skills. Respond in English.",
+            coach: "You are a motivating coach who helps achieve goals and build beneficial habits. You focus on actions and results. Respond in English.",
+            psychologist: "You are an empathetic psychologist who helps understand emotions, behavioral patterns, and internal processes. You create a safe space for reflection. Respond in English.",
+            business: "You are an experienced business consultant with expertise in strategy, sales, and business development. You provide practical commercial advice. Respond in English.",
+            reflection: "You are a wise assistant for self-reflection who helps understand yourself and situations more deeply. You ask the right questions. Respond in English."
+          }
+        };
+        
+        const systemPrompt = systemPrompts[language][helpType as keyof typeof systemPrompts['ru']] || systemPrompts[language].reflection;
+        console.log('- Using system prompt for:', helpType, 'in', language);
+        
+        // Вызываем Claude API
+        const messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ];
+        
+        const response = await callClaude(messages, "claude-3-5-sonnet-20241022", 0.7);
+        
+        console.log('✅ Claude response received');
+        console.log('- Response length:', response.length);
+        console.log('- Response preview:', response.substring(0, 150) + '...');
+        
+        return {
+          response: response,
+          persona: helpType,
+          language: language,
+          timestamp: Date.now()
+        };
+        
+      } catch (error: any) {
+        console.error('❌ Error in /api/advice endpoint:', error);
+        
+        return reply.status(500).send({
+          error: "Ошибка при получении совета",
+          details: error.message
+        });
+      }
+    }
+  );
+
   fastify.get("/health", async () => ({ ok: true }));
 
   console.log("Запуск сервера на порту 8787...");

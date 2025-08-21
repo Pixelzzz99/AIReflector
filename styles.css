@@ -1,19 +1,330 @@
+/* AI Reflect Plugin Styles */
+
+/* Основные стили для панели */
 .ai-reflect-view {
-  padding: 12px;
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+  font-family: var(--font-interface);
 }
-.ai-reflect-header {
+
+/* Заголовки и статус */
+.advice-header {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  opacity: 0.7;
-  margin-bottom: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 12px;
 }
-.ai-reflect-path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 70%;
+
+.advice-title {
+  margin: 0;
+  color: var(--text-accent);
+  font-size: 1.2em;
 }
-.ai-reflect-actions {
-  margin-top: 12px;
+
+.advice-status {
+  font-size: 0.9em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
 }
+
+.advice-status.loading {
+  background: var(--background-modifier-warning);
+  color: var(--text-warning);
+}
+
+.advice-status.ready {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+}
+
+.advice-status.idle {
+  background: var(--background-secondary);
+  color: var(--text-muted);
+}
+
+/* Информация о заметке */
+.note-info, .no-note-info {
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 0.95em;
+}
+
+.analysis-status {
+  color: var(--text-success);
+  font-weight: 500;
+}
+
+.analysis-status-loading {
+  color: var(--text-warning);
+}
+
+.analysis-status-pending {
+  color: var(--text-muted);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Кнопки */
+.advice-analyze-btn, 
+.advice-refresh-btn,
+.advice-action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.9em;
+  margin: 4px 4px 4px 0;
+  display: inline-block;
+}
+
+.advice-analyze-btn {
+  background: var(--interactive-accent);
+  color: white;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.advice-analyze-btn:hover:not(:disabled) {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+}
+
+.advice-refresh-btn {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.advice-refresh-btn:hover:not(:disabled) {
+  background: var(--background-modifier-border-hover);
+}
+
+.advice-action-btn {
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+}
+
+.advice-action-btn:hover:not(:disabled) {
+  background: var(--interactive-hover);
+}
+
+.save-btn:hover:not(:disabled) {
+  background: var(--color-green);
+  color: white;
+}
+
+.copy-btn:hover:not(:disabled) {
+  background: var(--color-blue);
+  color: white;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Плейсхолдер */
+.analysis-placeholder {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.placeholder-content h3 {
+  color: var(--text-accent);
+  margin-bottom: 16px;
+}
+
+.placeholder-content ul {
+  text-align: left;
+  display: inline-block;
+  margin: 16px 0;
+}
+
+.placeholder-content li {
+  margin: 8px 0;
+}
+
+/* Анализ */
+.response-section {
+  margin-top: 16px;
+}
+
+.advice-response-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.advice-persona {
+  font-size: 1.1em;
+}
+
+.advice-time {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.advice-meta {
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--background-secondary-alt);
+  border-radius: 6px;
+}
+
+.emotional-tone, .smart-tags {
+  margin: 4px 0;
+  font-size: 0.9em;
+}
+
+.smart-tag {
+  background: var(--tag-background);
+  color: var(--tag-color);
+  padding: 2px 6px;
+  margin: 0 4px 4px 0;
+  border-radius: 4px;
+  font-size: 0.8em;
+  display: inline-block;
+}
+
+.advice-response-text {
+  padding: 16px;
+  background: var(--background-primary-alt);
+  border-radius: 8px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.advice-response-section h4 {
+  margin: 0 0 12px 0;
+  color: var(--text-accent);
+}
+
+/* Связанные заметки */
+.smart-connections {
+  margin: 16px 0;
+}
+
+.connections-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.connections-list li {
+  margin: 4px 0;
+}
+
+.internal-link {
+  color: var(--link-color);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+.internal-link:hover {
+  background: var(--interactive-hover);
+  transform: translateX(4px);
+}
+
+/* Действия */
+.advice-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+  text-align: center;
+}
+
+/* Модальные окна */
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.modal-buttons button {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.save-preview-section {
+  margin: 20px 0;
+}
+
+.save-options-section {
+  margin: 20px 0;
+}
+
+.save-options-section input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.save-preview {
+  background: var(--background-secondary);
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.preview-date {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.preview-content {
+  line-height: 1.5;
+}
+
+/* Анимации */
+.advice-response-section {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Тоны */
+.tone-positive { color: var(--color-green); }
+.tone-negative { color: var(--color-red); }
+.tone-neutral { color: var(--text-muted); }

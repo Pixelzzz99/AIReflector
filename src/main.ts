@@ -12,8 +12,8 @@ import {
   DEFAULT_SETTINGS,
   AIReflectSettingTab,
 } from "./settings";
-import { AdviceView, VIEW_TYPE_ADVICE } from "./ui/AdviceView";
-import { buildPrompt } from "./prompts";
+import { SmartAdviceView, VIEW_TYPE_ADVICE } from "./ui/AutoAnalysisView";
+import { buildPrompt } from "./enhanced-prompts";
 
 export default class AIReflectPlugin extends Plugin {
   settings!: AIReflectSettings;
@@ -23,7 +23,7 @@ export default class AIReflectPlugin extends Plugin {
 
     this.registerView(
       VIEW_TYPE_ADVICE,
-      (leaf: WorkspaceLeaf) => new AdviceView(leaf)
+      (leaf: WorkspaceLeaf) => new SmartAdviceView(leaf, this.app, this)
     );
 
     this.addRibbonIcon("bot", "Analyze current note (AI)", async () => {
@@ -94,7 +94,7 @@ export default class AIReflectPlugin extends Plugin {
     }, this.settings.autoDelayMs);
   }
 
-  private async analyzeActiveNote() {
+  async analyzeActiveNote() {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view || !view.file) return new Notice("Open a markdown note first");
     await this.runAnalysis(view.file);
@@ -114,6 +114,12 @@ export default class AIReflectPlugin extends Plugin {
 
   private async runAnalysis(file: TFile) {
     try {
+      // Сначала активируем панель и показываем индикатор загрузки
+      await this.activateAdviceView();
+      const view = this.app.workspace.getLeavesOfType(VIEW_TYPE_ADVICE)[0]
+        .view as SmartAdviceView;
+      view.showLoading();
+
       const content = await this.app.vault.read(file);
       const metadata = this.app.metadataCache.getFileCache(file);
 
@@ -155,16 +161,18 @@ export default class AIReflectPlugin extends Plugin {
         score?: number;
         actions?: string[];
       };
-      await this.activateAdviceView();
-      const view = this.app.workspace.getLeavesOfType(VIEW_TYPE_ADVICE)[0]
-        .view as AdviceView;
-
-      view.setAdvice({
-        sourcePath: file.path,
-        adviceMd: data.adviceMd,
-        score: data.score,
-        actions: data.actions || [],
+      
+      // Передаём данные анализа в SmartAdviceView
+      view.updateAdvice({
+        prompt: snippet.substring(0, 200) + (snippet.length > 200 ? '...' : ''),
+        response: data.adviceMd,
+        persona: 'ai-assistant',
+        timestamp: Date.now(),
+        tags: metadata?.frontmatter?.tags ?? metadata?.frontmatter?.tag ?? [],
+        emotionalTone: 'neutral',
+        sourceFile: file.path
       });
+      console.log('✅ SmartAdviceView updated with analysis data');
 
       if (this.settings.appendToNote) {
         const block = `\n\n> AI Reflection (${new Date().toISOString()}):\n>\n${
@@ -176,17 +184,43 @@ export default class AIReflectPlugin extends Plugin {
       new Notice("AI advice updated");
     } catch (e: any) {
       console.error(e);
+      
+      // Сбрасываем состояние загрузки и показываем ошибку
+      const view = this.app.workspace.getLeavesOfType(VIEW_TYPE_ADVICE)[0]?.view as SmartAdviceView;
+      if (view) {
+        view.updateAdvice({
+          prompt: 'Ошибка анализа',
+          response: `Произошла ошибка при анализе: ${e.message || e}\n\nПроверьте подключение к серверу и настройки API.`,
+          persona: 'error',
+          timestamp: Date.now(),
+          tags: [],
+          emotionalTone: 'neutral',
+          sourceFile: file?.path || ''
+        });
+      }
+      
       new Notice(`AI Reflect error: ${e.message || e}`);
     }
   }
 
   async activateAdviceView() {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_ADVICE);
+    // Проверяем, есть ли уже активная панель
+    const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ADVICE);
+    
+    if (existingLeaves.length > 0) {
+      // Если панель уже существует, просто активируем её
+      this.app.workspace.revealLeaf(existingLeaves[0]);
+      return;
+    }
+
+    // Создаём новую панель только если её нет
     await this.app.workspace
       .getRightLeaf(false)
       ?.setViewState({ type: VIEW_TYPE_ADVICE, active: true });
-    this.app.workspace.revealLeaf(
-      this.app.workspace.getLeavesOfType(VIEW_TYPE_ADVICE)[0]
-    );
+      
+    const newLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ADVICE);
+    if (newLeaves.length > 0) {
+      this.app.workspace.revealLeaf(newLeaves[0]);
+    }
   }
 }
