@@ -186,12 +186,12 @@ button:disabled {
   border-radius: 6px;
 }
 
-.emotional-tone, .smart-tags {
+.emotional-tone, .smart-tags, .key-concepts {
   margin: 4px 0;
   font-size: 0.9em;
 }
 
-.smart-tag {
+.smart-tag, .key-concept {
   background: var(--tag-background);
   color: var(--tag-color);
   padding: 2px 6px;
@@ -199,6 +199,12 @@ button:disabled {
   border-radius: 4px;
   font-size: 0.8em;
   display: inline-block;
+}
+
+.key-concept {
+  background: var(--background-modifier-border);
+  color: var(--text-accent);
+  font-weight: 500;
 }
 
 .advice-response-text {

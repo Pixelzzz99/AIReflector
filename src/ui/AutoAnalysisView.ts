@@ -15,6 +15,8 @@ interface AdviceData {
   emotionalTone: string;
   suggestions?: TFile[];
   sourceFile?: string;
+  keyConcepts?: string[]; // Добавляем ключевые концепции
+  contentType?: string;   // Добавляем тип контента
 }
 
 export class SmartAdviceView extends ItemView {
@@ -255,10 +257,19 @@ export class SmartAdviceView extends ItemView {
     } catch (error) {
       console.error('❌ Error analyzing note:', error);
       
+      // Улучшенная обработка ошибок
+      let errorMessage = `Произошла ошибка при анализе заметки: ${error.message}`;
+      
+      if (error.message.includes('временно недоступен') || error.message.includes('перегружен')) {
+        errorMessage = `🔄 Claude API временно перегружен\n\n⏳ Сервер Anthropic получает слишком много запросов.\nПопробуйте через 2-5 минут.\n\n💡 Это временная проблема, которая обычно решается сама.`;
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorMessage = `🌐 Проблема с подключением к сети\n\nПроверьте интернет-соединение и попробуйте снова.`;
+      }
+      
       // Показываем ошибку в интерфейсе
       this.currentAdvice = {
         prompt: 'Анализ заметки',
-        response: `Произошла ошибка при анализе заметки: ${error.message}\n\nПроверьте подключение к серверу и попробуйте снова.`,
+        response: errorMessage,
         persona: 'error',
         timestamp: Date.now(),
         tags: [],
@@ -442,11 +453,23 @@ export class SmartAdviceView extends ItemView {
 
     if (advice.tags && advice.tags.length > 0) {
       const tagsEl = metaSection.createDiv('smart-tags');
-      tagsEl.createEl('strong', { text: '🏷️ Теги: ' });
+      tagsEl.createEl('strong', { text: '🏷️ Умные теги: ' });
       advice.tags.slice(0, 5).forEach(tag => {
         const tagEl = tagsEl.createEl('span', { 
           cls: 'smart-tag',
-          text: tag
+          text: tag.replace(/-/g, ' ') // Заменяем дефисы на пробелы для читабельности
+        });
+      });
+    }
+
+    // Отображаем ключевые концепции, если есть
+    if (advice.keyConcepts && advice.keyConcepts.length > 0) {
+      const conceptsEl = metaSection.createDiv('key-concepts');
+      conceptsEl.createEl('strong', { text: '🔑 Ключевые концепции: ' });
+      advice.keyConcepts.slice(0, 3).forEach(concept => {
+        const conceptEl = conceptsEl.createEl('span', { 
+          cls: 'key-concept',
+          text: concept
         });
       });
     }
