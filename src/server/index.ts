@@ -19,11 +19,12 @@ interface AIResponse {
   actions?: string[];
 }
 
-// Функция для вызова OpenAI API
+// Функция для вызова OpenAI API с повторными попытками
 async function callOpenAI(
   messages: Array<{ role: string; content: string }>,
   model: string,
-  temperature: number
+  temperature: number,
+  retryCount: number = 0
 ): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -41,7 +42,6 @@ async function callOpenAI(
   console.log('Model:', model);
   console.log('Temperature:', temperature);
   console.log('Messages:', messages.map(m => ({ role: m.role, length: m.content.length })));
-  console.log('Full request body:', JSON.stringify(requestBody, null, 2));
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -58,6 +58,16 @@ async function callOpenAI(
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     console.error('❌ OpenAI API Error Response:', errorData);
+    
+    // Специальная обработка ошибки 529 или rate limit (429)
+    if ((response.status === 529 || response.status === 429) && retryCount < 3) {
+      const waitTime = Math.pow(2, retryCount) * 1000; // Экспоненциальная задержка: 1с, 2с, 4с
+      console.log(`⏳ OpenAI API перегружен, повторная попытка через ${waitTime}мс (попытка ${retryCount + 1}/3)`);
+      
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return callOpenAI(messages, model, temperature, retryCount + 1);
+    }
+    
     throw new Error(`OpenAI API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
   }
 
@@ -71,11 +81,26 @@ async function callOpenAI(
   return data.choices[0]?.message?.content || "";
 }
 
-// Функция для вызова Claude API
+// Функция для нормализации имен моделей Claude
+function normalizeClaudeModel(model: string): string {
+  // Исправляем типичные ошибки в именах моделей
+  const modelFixes: { [key: string]: string } = {
+    'claude-3.5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
+    'claude-3.7-sonnet-20250219': 'claude-3-7-sonnet-20250219',
+    'claude-3-sonnet-20240229': 'claude-3-sonnet-20240229',
+    'claude-3-opus-20240229': 'claude-3-opus-20240229',
+    'claude-3-haiku-20240307': 'claude-3-haiku-20240307'
+  };
+
+  return modelFixes[model] || model;
+}
+
+// Функция для вызова Claude API с повторными попытками
 async function callClaude(
   messages: Array<{ role: string; content: string }>,
   model: string,
-  temperature: number
+  temperature: number,
+  retryCount: number = 0
 ): Promise<string> {
   const apiKey = process.env.CLAUDE_API_KEY || null;
 
@@ -83,12 +108,15 @@ async function callClaude(
     throw new Error("CLAUDE_API_KEY не установлен");
   }
 
+  // Нормализуем имя модели
+  const normalizedModel = normalizeClaudeModel(model);
+  
   // Преобразуем формат сообщений для Claude API
   const systemMessage = messages.find(m => m.role === "system");
   const userMessages = messages.filter(m => m.role !== "system");
   
   const requestBody = {
-    model,
+    model: normalizedModel,
     max_tokens: 1500,
     temperature,
     system: systemMessage?.content || "",
@@ -96,11 +124,10 @@ async function callClaude(
   };
 
   console.log('🚀 Claude API Request:');
-  console.log('Model:', model);
+  console.log('Model:', normalizedModel);
   console.log('Temperature:', temperature);
   console.log('System prompt:', systemMessage?.content?.substring(0, 100) + '...');
   console.log('User message:', userMessages[0]?.content?.substring(0, 200) + '...');
-  console.log('Full request body:', JSON.stringify(requestBody, null, 2));
   
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -118,6 +145,26 @@ async function callClaude(
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     console.error('❌ Claude API Error Response:', errorData);
+    
+    // Специальная обработка ошибки 529 (перегрузка)
+    if (response.status === 529 && retryCount < 3) {
+      const waitTime = Math.pow(2, retryCount) * 1000; // Экспоненциальная задержка: 1с, 2с, 4с
+      console.log(`⏳ Claude API перегружен, повторная попытка через ${waitTime}мс (попытка ${retryCount + 1}/3)`);
+      
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return callClaude(messages, model, temperature, retryCount + 1);
+    }
+    
+    // Специальная обработка ошибки 404 (неверная модель)
+    if (response.status === 404 && errorData.error?.message?.includes('model')) {
+      throw new Error(`Модель ${normalizedModel} не найдена. ${errorData.error.message}`);
+    }
+    
+    // Обработка ошибки перегрузки без повторных попыток
+    if (response.status === 529) {
+      throw new Error("Claude API временно недоступен (перегружен). Попробуйте через несколько минут.");
+    }
+    
     throw new Error(`Claude API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
   }
 
@@ -125,7 +172,6 @@ async function callClaude(
   console.log('✅ Claude API Success Response:');
   console.log('Response structure:', Object.keys(data));
   console.log('Content length:', data.content?.[0]?.text?.length || 0);
-  console.log('Full response:', JSON.stringify(data, null, 2));
   console.log('Response text preview:', data.content?.[0]?.text?.substring(0, 300) + '...');
   
   return data.content[0]?.text || "";

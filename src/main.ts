@@ -14,12 +14,20 @@ import {
 } from "./settings";
 import { SmartAdviceView, VIEW_TYPE_ADVICE } from "./ui/AutoAnalysisView";
 import { buildPrompt } from "./enhanced-prompts";
+import { SmartTagsAnalyzer } from "./analysis/SmartTagsAnalyzer";
+import { SmartConnectionsAnalyzer } from "./analysis/SmartConnectionsAnalyzer";
 
 export default class AIReflectPlugin extends Plugin {
   settings!: AIReflectSettings;
+  private smartTags: SmartTagsAnalyzer;
+  private smartConnections: SmartConnectionsAnalyzer;
 
   async onload() {
     await this.loadSettings();
+
+    // Инициализируем анализаторы
+    this.smartTags = new SmartTagsAnalyzer();
+    this.smartConnections = new SmartConnectionsAnalyzer(this.app);
 
     this.registerView(
       VIEW_TYPE_ADVICE,
@@ -123,6 +131,18 @@ export default class AIReflectPlugin extends Plugin {
       const content = await this.app.vault.read(file);
       const metadata = this.app.metadataCache.getFileCache(file);
 
+      // Анализируем контент с помощью умных анализаторов
+      console.log('🧠 Running smart analysis...');
+      const contentAnalysis = this.smartTags.analyzeContent(content);
+      const suggestions = await this.smartConnections.getSuggestions(content, 3);
+
+      console.log('📊 Smart analysis results:', {
+        tags: contentAnalysis.suggestedTags,
+        emotionalTone: contentAnalysis.emotionalTone,
+        contentType: contentAnalysis.contentType,
+        suggestions: suggestions.length
+      });
+
       const maxChars = this.settings.maxChars;
 
       const snippet =
@@ -132,7 +152,7 @@ export default class AIReflectPlugin extends Plugin {
         noteTitle: file.basename,
         notePath: file.path,
         noteContent: snippet,
-        tags: metadata?.frontmatter?.tags ?? metadata?.frontmatter?.tag ?? [],
+        tags: contentAnalysis.suggestedTags, // Используем умные теги вместо метаданных
         goals: this.settings.goals,
         persona: this.settings.persona,
       });
@@ -162,17 +182,20 @@ export default class AIReflectPlugin extends Plugin {
         actions?: string[];
       };
       
-      // Передаём данные анализа в SmartAdviceView
+      // Передаём данные анализа в SmartAdviceView с умными тегами
       view.updateAdvice({
         prompt: snippet.substring(0, 200) + (snippet.length > 200 ? '...' : ''),
         response: data.adviceMd,
-        persona: 'ai-assistant',
+        persona: contentAnalysis.contentType, // Используем тип контента как персону
         timestamp: Date.now(),
-        tags: metadata?.frontmatter?.tags ?? metadata?.frontmatter?.tag ?? [],
-        emotionalTone: 'neutral',
-        sourceFile: file.path
+        tags: contentAnalysis.suggestedTags, // Умные теги
+        emotionalTone: contentAnalysis.emotionalTone.tone, // Эмоциональный тон
+        suggestions: suggestions.map(s => s.file), // Связанные заметки
+        sourceFile: file.path,
+        keyConcepts: contentAnalysis.keyConcepts, // Ключевые концепции
+        contentType: contentAnalysis.contentType // Тип контента
       });
-      console.log('✅ SmartAdviceView updated with analysis data');
+      console.log('✅ SmartAdviceView updated with smart analysis data');
 
       if (this.settings.appendToNote) {
         const block = `\n\n> AI Reflection (${new Date().toISOString()}):\n>\n${

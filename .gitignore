@@ -17,10 +17,6 @@ npm-debug.log*
 .tmp/
 temp/
 
-# Системные файлы
-.DS_Store
-**/.DS_Store
-
 # IDE
 .vscode/
 .idea/
@@ -36,3 +32,4 @@ Thumbs.db
 
 # TypeScript сборка плагина
 main.js
+*.zip
